@@ -23,7 +23,7 @@ try:
     print(f'Изначальная матрица А:\n{A}')
 
     submatrix_length = N // 2
-    x = submatrix_length + N % 2
+    # x = submatrix_length + N % 2
     D = numpy.array(A[:submatrix_length, :submatrix_length])
     E = numpy.array(A[:submatrix_length, submatrix_length + N % 2:N])
     C = numpy.array(A[submatrix_length + N % 2:N, :submatrix_length])
