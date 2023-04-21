@@ -55,61 +55,64 @@ def f_iteration(n):
         last_f = current_f
     return last_f
 
-
-N = int(input('Введите число n, являющимся входным для ф-ии, указанной в условии. (n ≥ 2) = '))
-while N < 2:
-    print('Число должно быть больше 1-ого. Введите заново!')
+try:
     N = int(input('Введите число n, являющимся входным для ф-ии, указанной в условии. (n ≥ 2) = '))
+    while N < 2:
+        print('Число должно быть больше 1-ого. Введите заново!')
+        N = int(input('Введите число n, являющимся входным для ф-ии, указанной в условии. (n ≥ 2) = '))
 
-print('\nАвтотест - анализ времени для выполнения вычисления для всех значений от 2 до n, и запись результатов в файл')
-answer = int(input('Выполнить автотест - 1, просто рассчитать значение для заданного входного значения n - 0\nОтвет: '))
-while answer not in (1, 0):
-    print('Вы ввели не 1 и не 0!')
+    print('\nАвтотест - анализ времени для выполнения вычисления для всех значений от 2 до n, и запись результатов в файл')
     answer = int(input('Выполнить автотест - 1, просто рассчитать значение для заданного входного значения n - 0\nОтвет: '))
+    while answer not in (1, 0):
+        print('Вы ввели не 1 и не 0!')
+        answer = int(input('Выполнить автотест - 1, просто рассчитать значение для заданного входного значения n - 0\nОтвет: '))
 
-if answer == 0:
-    print('\nВыполнение итерации...')
-    start = time.time()
-    result_iteration = f_iteration(N)
-    end = time.time()
-    print(f'\nРезультат работы итерационного подхода - {result_iteration}\nЗатраченное время - {end - start}')
-
-    answer = 1
-    if N >= 38:
-        print('\nЧисло n слишком большое для рекурсивного подхода, и может занять многооо времени')
-        answer = int(input('Введите 1, если хотите выполнить расчет, или 0, если нет - '))
-        while answer not in (1, 0):
-            print('Вы ввели не 1 и не 0!')
-            answer = int(input('Введите 1, если хотите выполнить расчет, или 0, если нет'))
-
-    if answer == 1:
-        print('\nВыполнение рекурсии...')
+    if answer == 0:
+        print('\nВыполнение итерации...')
         start = time.time()
-        result_recursion = f_recursion(N)
+        result_iteration = f_iteration(N)
         end = time.time()
-        print(f'\nРезультат работы рекурсивного подхода - {result_iteration}\nЗатраченное время - {end - start}')
-else:
-    date = f'{datetime.datetime.now().day}.{datetime.datetime.now().month}'
-    file_name = f'result_{date}.csv'
-    with open(file_name,'w', newline='') as file:
-        writer = csv.writer(file, delimiter=';')
-        writer.writerow(
-            (
-                'n',
-                'Время итерации, сек'
-            )
-        )
-    for n in range(1000, N+1, 1000):
-        start = time.time()
-        f_iteration(n)
-        end = time.time()
-        time_iteration = end-start
-        with open(file_name, 'a', newline='') as file:
+        print(f'\nРезультат работы итерационного подхода - {result_iteration}\nЗатраченное время - {end - start}')
+
+        answer = 1
+        if N >= 38:
+            print('\nЧисло n слишком большое для рекурсивного подхода, и может занять многооо времени')
+            answer = int(input('Введите 1, если хотите выполнить расчет, или 0, если нет - '))
+            while answer not in (1, 0):
+                print('Вы ввели не 1 и не 0!')
+                answer = int(input('Введите 1, если хотите выполнить расчет, или 0, если нет'))
+
+        if answer == 1:
+            print('\nВыполнение рекурсии...')
+            start = time.time()
+            result_recursion = f_recursion(N)
+            end = time.time()
+            print(f'\nРезультат работы рекурсивного подхода - {result_iteration}\nЗатраченное время - {end - start}')
+    else:
+        date = f'{datetime.datetime.now().day}.{datetime.datetime.now().month}'
+        file_name = f'result_{date}.csv'
+        with open(file_name,'w', newline='') as file:
             writer = csv.writer(file, delimiter=';')
             writer.writerow(
                 (
-                    n,
-                    time_iteration
+                    'n',
+                    'Время итерации, сек'
                 )
             )
-
+        for n in range(1000, N+1, 1000):
+            start = time.time()
+            f_iteration(n)
+            end = time.time()
+            time_iteration = end-start
+            with open(file_name, 'a', newline='') as file:
+                writer = csv.writer(file, delimiter=';')
+                writer.writerow(
+                    (
+                        n,
+                        time_iteration
+                    )
+                )
+except ValueError:
+    print(f"ValueError - вы неправильно ввели данные.")
+except Exception as e:
+    print(f'Внимание! Неизв. ошибка: {e}')
