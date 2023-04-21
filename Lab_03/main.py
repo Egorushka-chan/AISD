@@ -17,6 +17,7 @@ import random
 from math import ceil, floor
 
 
+
 def print_matrix(matrix):
     for row in matrix:
         print(row)
@@ -42,8 +43,8 @@ try:
     for i in range(N):
         new_row = []
         for j in range(N):
-            new_row.append(random.randint(-10, 10))
-            #new_row.append(int(input(f'i={i} j={j} число = ')))
+            #new_row.append(random.randint(-10, 10))
+            new_row.append(int(input(f'i={i} j={j} число = ')))
         matrix_A.append(new_row)
 
     print_matrix(matrix_A)
