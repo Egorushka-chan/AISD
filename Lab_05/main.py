@@ -7,8 +7,6 @@
 #	F(1) = 2; G(1) = 1; F(n) = (n–1)! – G(n–1), G(n) = F(n–1) + G(n–1), при n >=2
 
 import time
-import datetime
-import csv
 from matplotlib import pyplot as plt
 
 F_START = 2
