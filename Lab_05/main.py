@@ -11,8 +11,6 @@ import datetime
 import csv
 from matplotlib import pyplot as plt
 
-# TODO: Удалить вывод csv-шного файла, и заменить на вывод графиков и mathplotlib
-
 F_START = 2
 G_START = 1
 N_RECURSION_MAX = 36  # число N, более которого выводится предупреждение о слишком большой рекурсии
