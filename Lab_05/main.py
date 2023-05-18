@@ -9,9 +9,13 @@
 import time
 import datetime
 import csv
+from matplotlib import pyplot as plt
+
+# TODO: Удалить вывод csv-шного файла, и заменить на вывод графиков и mathplotlib
 
 F_START = 2
 G_START = 1
+N_RECURSION_MAX = 36  # число N, более которого выводится предупреждение о слишком большой рекурсии
 
 
 # ---------------------------РЕКУРСИЯ----------------------------
@@ -55,64 +59,96 @@ def f_iteration(n):
         last_f = current_f
     return last_f
 
+
 try:
     N = int(input('Введите число n, являющимся входным для ф-ии, указанной в условии. (n ≥ 2) = '))
     while N < 2:
         print('Число должно быть больше 1-ого. Введите заново!')
         N = int(input('Введите число n, являющимся входным для ф-ии, указанной в условии. (n ≥ 2) = '))
 
-    print('\nАвтотест - анализ времени для выполнения вычисления для всех значений от 2 до n, и запись результатов в файл'
-          '\nдля итерационного подхода с шагом в 1000')
-    answer = int(input('Выполнить автотест - 1, просто рассчитать значение для заданного входного значения n - 0\nОтвет: '))
-    while answer not in (1, 0):
-        print('Вы ввели не 1 и не 0!')
-        answer = int(input('Выполнить автотест - 1, просто рассчитать значение для заданного входного значения n - 0\nОтвет: '))
+    print('\nВыполнение итерации...')
+    start = time.time()
+    result_iteration = f_iteration(N)
+    end = time.time()
+    print(f'\nРезультат работы итерационного подхода - {result_iteration}\nЗатраченное время - {end - start}')
 
-    if answer == 0:
-        print('\nВыполнение итерации...')
+    answer = '1'
+    if N >= N_RECURSION_MAX:
+        print('\nЧисло n слишком большое для рекурсивного подхода, и может занять многооо времени')
+        answer = input('Введите 1, если хотите выполнить расчет, или 0, если нет - ')
+        while answer not in ('1', '0'):
+            print('Вы ввели не 1 и не 0!')
+            answer = int(input('Введите 1, если хотите выполнить расчет, или 0, если нет'))
+
+    if answer == '1':
+        print('\nВыполнение рекурсии...')
         start = time.time()
-        result_iteration = f_iteration(N)
+        result_recursion = f_recursion(N)
         end = time.time()
-        print(f'\nРезультат работы итерационного подхода - {result_iteration}\nЗатраченное время - {end - start}')
+        print(f'\nРезультат работы рекурсивного подхода - {result_iteration}\nЗатраченное время - {end - start}')
 
-        answer = 1
-        if N >= 38:
-            print('\nЧисло n слишком большое для рекурсивного подхода, и может занять многооо времени')
-            answer = int(input('Введите 1, если хотите выполнить расчет, или 0, если нет - '))
-            while answer not in (1, 0):
-                print('Вы ввели не 1 и не 0!')
-                answer = int(input('Введите 1, если хотите выполнить расчет, или 0, если нет'))
+    print('\nСделать сравнительную таблицу рекурсивного и итерационного подхода?')
+    if (N >= N_RECURSION_MAX):
+        print(f'Внимание! Число N больше {N_RECURSION_MAX}, и расчет займет много времени!')
+    answer = input('Введите 1, если хотите выполнить расчет, или 0, если нет - ')
+    while answer not in ('1', '0'):
+        print('Вы ввели не 1 и не 0!')
+        answer = int(input('Введите 1, если хотите выполнить расчет, или 0, если нет'))
 
-        if answer == 1:
-            print('\nВыполнение рекурсии...')
+    if answer == '1':
+        recursive_time = []
+        iteration_time = []
+
+        for n in range(1, N):
             start = time.time()
-            result_recursion = f_recursion(N)
+            f_recursion(n)
             end = time.time()
-            print(f'\nРезультат работы рекурсивного подхода - {result_iteration}\nЗатраченное время - {end - start}')
-    else:
-        date = f'{datetime.datetime.now().day}.{datetime.datetime.now().month}'
-        file_name = f'result_{date}.csv'
-        with open(file_name,'w', newline='') as file:
-            writer = csv.writer(file, delimiter=';')
-            writer.writerow(
-                (
-                    'n',
-                    'Время итерации, сек'
-                )
-            )
-        for n in range(1000, N+1, 1000):
+            recursive_time.append(end - start)
+
             start = time.time()
             f_iteration(n)
             end = time.time()
-            time_iteration = end-start
-            with open(file_name, 'a', newline='') as file:
-                writer = csv.writer(file, delimiter=';')
-                writer.writerow(
-                    (
-                        n,
-                        time_iteration
-                    )
-                )
+            iteration_time.append(end - start)
+
+        fig, ax = plt.subplots()
+        ax.set(title='Сравнение итерационного и рекурсивного подхода', xlabel='N', ylabel='Время, сек.')
+        ax.plot(recursive_time, label='Рекурсия')
+        ax.plot(iteration_time, label='Итерация')
+        ax.set_xticks(range(N))
+
+        plt.show()
+
+    print('Создать график итерационного подхода? Шаг - 1000'
+          '\nВведите 0 - не создавать'
+          '\nВведите 1 - до 20000, займёт ~3 секунды'
+          '\nВведите 2 - до 50000, займёт ~40 секунд'
+          '\nВведите 3 - до 200000, займёт ~10 минут')
+    answer = input('Ответ = ')
+    while answer not in ('1', '0', '2', '3'):
+        print('Вы ввели неверное значение')
+        answer = int(input('Введите 0, 1, 2, 3 ='))
+    if answer in ('1', '2', '3'):
+        MAX = 21000
+        if answer == '2':
+            MAX = 51000
+        if answer == '3':
+            MAX = 210000
+
+        iteration_range = range(1000, MAX, 1000)
+        iteration_time = []
+
+        for i in iteration_range:
+            start = time.time()
+            f_iteration(i)
+            end = time.time()
+            iteration_time.append(end - start)
+
+        fig, ax = plt.subplots()
+        ax.set(title='График итерационного подхода', xlabel='N', ylabel='Время, сек.')
+        ax.plot(iteration_range,iteration_time, label = 'Итерация')
+
+        plt.show()
+
 except ValueError:
     print(f"ValueError - вы неправильно ввели данные.")
 except Exception as e:
