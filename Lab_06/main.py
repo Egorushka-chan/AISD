@@ -8,23 +8,25 @@
 # программу, состоящую из N фильмов. Сформировать все возможные варианты программ.
 
 # Придуманое мною усложнение:
-# В каждой программе должно быть минимум 1, при K = 1, или 2, при K > 1, патриотических фильма
-# Каждая программа должна быть уникальна (не должно существовать программы с одинаковыи фильмами)
+# У каждой программы должна быть цена
+# Нужно высчитать самую дешевую и дорогую программу
+
 
 import random
+from collections import deque
 
 
 class Film:
-    def __init__(self, id, is_patriotic=False):
+    def __init__(self, id, cost=0):
         self.id = id
-        self.is_patriotic = is_patriotic
+        self.cost = cost
 
 
 def factorial(n):
-    if n == 1:
-        return 1
-    else:
-        return n * factorial(n - 1)
+    result = 1
+    for i in range(1, n + 1):
+        result *= i
+    return result
 
 
 def placement(n, k):
@@ -32,94 +34,129 @@ def placement(n, k):
 
 
 def first_part(K, N):
-    def create_program_array(film_array, depth, program_array, input_program):  # первая часть
-        if depth == 0:
-            program_array.append(input_program)
-        else:
+    def create_program_array(film_array, depth):
+        production = deque()
+        result_program_array = []
+        for film in film_array:
+            production.append([film])
+
+        while len(production):
+            program = production.popleft()
             for film in film_array:
-                if depth > 0:
-                    if film not in input_program:
-                        self_program = input_program.copy()
-                        self_program.append(film)
-                        create_program_array(film_array, depth - 1, program_array, self_program)
-        return program_array
+                if film not in program:
+                    self_program = program.copy()
+                    self_program.append(film)
+
+                    if len(self_program) == depth:
+                        result_program_array.append(self_program)
+                    else:
+                        production.append(self_program)
+
+        return result_program_array
 
     print('---------------------ЧАСТЬ 1. Базовая программа---------------------------------')
 
     film_array = [Film(i) for i in range(1, K + 1)]  # создаем набор фильмов
 
     print('\nСозданы фильмы:')
-    for film in film_array[:5]:
-        print(f'{film.id}')
-    if K > 5:
-        print('etc.')
+    [print(f'{film.id}') for film in film_array]
 
-    program_list = create_program_array(film_array, N, [], [])
+    program_list = create_program_array(film_array, N)
 
-    print('\nСозданы программы:')
-    for program in program_list[:30]:
-        str = ''
-        for film in program:
-            str += f'{film.id} '
-        print(str)
-    if len(program_list) > 30:
-        print('etc.')
     print(f'\nКоличество различных программ = {len(program_list)}')
     print(f'\nМатематическое размещение показывает, что правильный ответ должен быть ', placement(K, N))
 
-
-def second_part(K, N):
-    def create_program_array(film_array, depth, program_array, input_program):  # первая часть
-        if depth == 0:
-            program_array.append(input_program)
-        else:
-            for film in film_array:
-                if len(input_program) == 0:
-                    film_array.remove(film)
-                if depth > 0:
-                    if film not in input_program:
-                        if (film.is_patriotic) or (len([i for film in input_program if film.is_patriotic]) >= 2):
-                            self_program = input_program.copy()
-                            self_program.append(film)
-                            create_program_array(film_array, depth - 1, program_array, self_program)
-        return program_array
-    print('---------------------ЧАСТЬ 2. Усложнённая программа---------------------------------')
-
-    patriotic_chance = 1
-    film_array = []
-    patriotic_count = 0
-    for i in range(1, K + 1):
-        chance = random.random()
-        if chance <= patriotic_chance:
-            is_patriotic = True
-            patriotic_count += 1
-            if patriotic_count >= 2:
-                patriotic_chance = 0.2
-        else:
-            is_patriotic = False
-        film_array.append(Film(i, is_patriotic))
-
-    print('\nСозданы фильмы:')
-    for film in film_array[:10]:
-        str = ''
-        if film.is_patriotic:
-            str = ', патриотический'
-        print(f'{film.id}{str}')
-    if K > 10:
-        print('etc.')
-    print('\nКол-во патриотического кино:', patriotic_count)
-
-    program_list = create_program_array(film_array.copy(), N, [], [])
-
-    print('\nСозданы программы:')
-    for program in program_list[:30]:
+    showing_list = program_list
+    if len(program_list) > 30:
+        quantity = int(input(f'Введите 0 - чтобы вывести все.'
+                             f'\nВведите другое число - чтобы вывести кол-во программ, равное этому числу.'
+                             f'\nОтвет = '))
+        if quantity != 0:
+            showing_list = program_list[:quantity]
+    for program in showing_list:
         str = ''
         for film in program:
             str += f'{film.id} '
         print(str)
+
+
+def second_part(K, N):
+    def create_program_array(film_array, depth):
+        production = deque()
+        program_array = []
+        for film in film_array:
+            production.append([film])
+
+        while len(production):
+            program = production.popleft()
+            for film in film_array:
+                if film not in program:
+                    self_program = program.copy()
+                    self_program.append(film)
+
+                    if len(self_program) == depth:
+                        program_array.append(self_program)
+                    else:
+                        production.append(self_program)
+
+        def sum(program):
+            sum = 0
+            for film in program:
+                sum += film.cost
+            return sum
+
+        max = program_array[0]
+        min = program_array[0]
+        for program in program_array:
+            if sum(program) > sum(max):
+                max = program
+            if sum(program) < sum(min):
+                min = program
+
+        return program_array, max, min
+
+
+
+    print('---------------------ЧАСТЬ 2. Усложнённая программа---------------------------------')
+
+    film_array = []
+    COST_MAX = 1500
+    COST_MIN = 200
+    for i in range(1, K + 1):
+        cost = random.randint(COST_MIN, COST_MAX)
+        film_array.append(Film(i, cost))
+
+    print('\nСозданы фильмы:')
+    for film in film_array:
+        print(f'{film.id}, {film.cost} руб.')
+
+    program_list, max, min = create_program_array(film_array.copy(), N)
+
+    print(f'\nКоличество различных программ = {len(program_list)}')
+
+    showing_list = program_list
     if len(program_list) > 30:
-        print('etc.')
-    print(f'\nКоличество уникальных программ = {len(program_list)}')
+        quantity = int(input(f'Введите 0 - чтобы вывести все.'
+                             f'\nВведите другое число - чтобы вывести кол-во программ, равное этому числу.'
+                             f'\nОтвет = '))
+        if quantity != 0:
+            showing_list = program_list[:quantity]
+    for program in showing_list:
+        strng = ''
+        for film in program:
+            strng += f'{film.id} '
+        print(strng)
+
+    total_max = 0
+    for film in max:
+        total_max += film.cost
+    print(f'Самая дорогая программа - |{[str(film.id) + " " for film in max]}| ценой {total_max}')
+    total_min = 0
+    for film in min:
+        total_min += film.cost
+    print(f'Самая дешевая программа - |{[str(film.id) + " " for film in min]}| ценой {total_min}')
+
+
 
 
 if __name__ == "__main__":
@@ -138,4 +175,4 @@ if __name__ == "__main__":
     except ValueError:
         print(f"ValueError - вы неправильно ввели данные.")
     except Exception as e:
-        print(f'Внимание! Неизв. ошибка: {e}')
+       print(f'Внимание! Неизв. ошибка: {e}')
