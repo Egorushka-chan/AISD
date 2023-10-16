@@ -1,6 +1,10 @@
+import os
 import random
+import tkinter.messagebox
 from tkinter import *
 from collections import deque
+
+ASSETS_PATH = os.path.dirname(os.path.realpath(__file__)) + r"\assets"
 
 
 class Film:
@@ -58,90 +62,429 @@ class Hosting:
 
         program_list, max, min = self.create_program_array(film_array.copy(), self.N)
 
-        showing_list = program_list
-
-        str_max, str_min = '', ''
-
-        total_max = 0
-        for film in max:
-            total_max += film.cost
-        str_max = f'Самая дорогая программа - |{[str(film.id) + " " for film in max]}| ценой {total_max}'
-        total_min = 0
-        for film in min:
-            total_min += film.cost
-        str_min = f'Самая дешевая программа - |{[str(film.id) + " " for film in min]}| ценой {total_min}'
-
-        return showing_list, str_max, str_min
+        return program_list, max, min
 
 
 class OutputForm():
     def __init__(self, result, input_form):
-        self.root = Tk()
-        self.root.title('Окно вывода')
+        self.window = Tk()
+        self.window.title('Вывод')
 
-        self.max_label = Label(self.root, text=result[1]).grid(row=0, column=0)
-        self.min_label = Label(self.root, text=result[2]).grid(row=1, column=0)
+        self.program_set, self.max_program, self.min_program = result
 
-        results_str = []
-        for program in result[0]:
-            strng = ''
-            for film in program:
-                strng += f'{film.id} '
-            results_str.append(strng)
+        self.current_programs = 1
+        self.program_range = 12
 
-        self.listbox = Listbox(self.root, width=20, height=50)
+        self.program_count = len(self.program_set)
 
-        for i in results_str:
-            self.listbox.insert(0, i)
+        self.window.geometry("873x509")
+        self.window.configure(bg="#FFFFFF")
 
-        self.listbox.grid(row=2, column=0)
+        canvas = Canvas(
+            self.window,
+            bg="#FFFFFF",
+            height=509,
+            width=873,
+            bd=0,
+            highlightthickness=0,
+            relief="ridge"
+        )
+
+        canvas.place(x=0, y=0)
+        canvas.create_rectangle(
+            0.0,
+            0.0,
+            471.0,
+            509.0,
+            fill="#EDEDED",
+            outline="")
+
+        image_image_1 = PhotoImage(
+            master=self.window,
+            file=self.relative_to_assets("image_1.png"))
+        image_1 = canvas.create_image(
+            231.0,
+            131.0,
+            image=image_image_1
+        )
+
+        image_image_2 = PhotoImage(
+            master=self.window,
+            file=self.relative_to_assets("image_2.png"))
+        image_2 = canvas.create_image(
+            231.0,
+            369.0,
+            image=image_image_2
+        )
+
+        self.poor_frame = Frame(master=canvas, bg='#C8FFD1')
+        self.poor_frame.place(
+            x=29,
+            y=329,
+            width=408,
+            height=142
+        )
+
+        # canvas.create_rectangle( # дешевый
+        #     29.0,
+        #     329.0,
+        #     437.0,
+        #     471.0,
+        #     fill="#C8FFD1",
+        #     outline="")
+
+        image_image_3 = PhotoImage(
+            master=self.window,
+            file=self.relative_to_assets("image_3.png"))
+        image_3 = canvas.create_image(
+            51.0,
+            285.0,
+            image=image_image_3
+        )
+
+        self.poor_price_label = Label(master=canvas, bg='#C8FFD1', font=("Inter", 20 * -1))
+        self.poor_price_label.place(
+            x=185,
+            y=291
+        )
+
+        canvas.create_text(
+            108.0,
+            261.0,
+            anchor="nw",
+            text="Самая дешевая программа",
+            fill="#000000",
+            font=("Inter", 20 * -1)
+        )
+
+        self.rich_frame = Frame(master=canvas, bg='#F6FFBD')
+        self.rich_frame.place(
+            x=29,
+            y=88,
+            width=401,
+            height=143
+        )
+
+        # canvas.create_rectangle( # дорогой
+        #     29.0,
+        #     88.0,
+        #     430.0,
+        #     231.0,
+        #     fill="#F6FFBD",
+        #     outline="")
+
+        image_image_4 = PhotoImage(
+            master=self.window,
+            file=self.relative_to_assets("image_4.png"))
+        image_4 = canvas.create_image(
+            51.0,
+            47.0,
+            image=image_image_4
+        )
+
+        self.rich_price_label = Label(master=canvas, bg='#F6FFBD', font=("Inter", 20 * -1))
+        self.rich_price_label.place(
+            x=185,
+            y=58
+        )
+
+        canvas.create_text(
+            115.0,
+            28.0,
+            anchor="nw",
+            text="Самая дорогая программа",
+            fill="#000000",
+            font=("Inter", 20 * -1)
+        )
+
+        canvas.create_rectangle(
+            471.0,
+            0.0,
+            873.0,
+            509.0,
+            fill="#E3E3E3",
+            outline="")
+
+        self.table_frame = Frame(master=canvas, bg="#E4E4E4")
+        self.table_frame.place(
+            x=493,
+            y=70,
+            width=350,
+            height=400
+        )
+
+        rooting = Frame(self.table_frame, bg="#E4E4E4")
+        Button(rooting, text='<', command=self.click_back_button).grid(row=0, column=0, pady=2, padx=2)
+        Button(rooting, text='>', command=self.click_forward_button).grid(row=0, column=1, pady=2, padx=2)
+        self.rooting_label = Label(rooting, bg="#E4E4E4", font=("Inter", 14 * -1), text='1-12')
+        self.rooting_label.grid(row=0, column=2, padx=2, pady=2)
+        rooting.grid(row=0, column=0)
+
+        self.displayed_programs = []
+
+        self.total_program_label = Label(master=canvas, bg="#E4E4E4", font=("Inter", 20 * -1))
+        self.total_program_label.place(
+            x=530,
+            y=40
+        )
+
+        # canvas.create_rectangle( # программы
+        #     493.0,
+        #     47.0,
+        #     843.0,
+        #     483.0,
+        #     fill="#E4E4E4",
+        #     outline="")
+
+        canvas.create_text(
+            585.0,
+            9.0,
+            anchor="nw",
+            text="Таблица программ",
+            fill="#000000",
+            font=("Inter", 20 * -1)
+        )
         input_form.destroy()
-        self.root.mainloop()
+        self.total_program_label['text'] = 'Кол-во различных программ = ' + str(len(self.program_set))
+        self.fill_rich_program()
+        self.fill_poor_program()
+        self.fill_table()
+
+        self.window.resizable(False, False)
+        self.window.mainloop()
+
+    def relative_to_assets(self, path: str):
+        return ASSETS_PATH + r'/outputForm/' + path
+
+    def fill_rich_program(self):
+        self.max_program = sorted(self.max_program, key=lambda film: film.cost, reverse=True)
+        total_max = 0
+        i = 1
+        for film in self.max_program:
+            total_max += film.cost
+
+            l = Label(self.rich_frame, font=("Inter", 14 * -1), bg='#F6FFBD')
+            l['text'] = f'{i}. ID:{film.id}, Цена:{film.cost}'
+            l.pack(anchor=W)
+            i += 1
+        self.rich_price_label['text'] = str(total_max) + ' рублей'
+
+    def fill_poor_program(self):
+        self.min_program = sorted(self.min_program, key=lambda film: film.cost, reverse=True)
+        total_min = 0
+        i = 1
+        for film in self.min_program:
+            total_min += film.cost
+
+            l = Label(self.poor_frame, font=("Inter", 14 * -1), bg='#C8FFD1')
+            l['text'] = f'{i}. ID:{film.id}, Цена:{film.cost}'
+            l.pack(anchor=W)
+            i += 1
+        self.poor_price_label['text'] = str(total_min) + ' рублей'
+
+    def fill_table(self):
+        for p in self.displayed_programs:
+            p.destroy()
+
+        for i in range(self.current_programs, self.current_programs+self.program_range):
+            if i > self.program_count:
+                return
+            program = self.program_set[i-1]
+            frame = Frame(self.table_frame, bg="#E4E4E4")
+            total_price = 0
+
+            Label(frame,font=("Inter", 14 * -1), bg="#E4E4E4", text=f'{i}: ').pack(anchor=W, side=LEFT)
+
+            for film in program:
+                l = Label(frame, font=("Inter", 14 * -1), bg="#E4E4E4")
+                l['text'] = film.id
+                l.pack(anchor=W, pady=2, padx=2, side=LEFT)
+
+                total_price += film.cost
+
+            Label(frame,font=("Inter", 14 * -1), bg="#E4E4E4", text=f'{total_price} руб.').pack(anchor=E, pady=2, padx=2, side=LEFT)
+            frame.grid(column=0)
+            self.displayed_programs.append(frame)
+
+    def click_back_button(self):
+        test = self.current_programs - self.program_range
+        if test <= 0:
+            return
+        self.current_programs = test
+        self.rooting_label['text'] = f'{self.current_programs}-{self.program_range+self.current_programs-1}'
+        self.fill_table()
+
+    def click_forward_button(self):
+        test = self.current_programs + self.program_range
+        if test >= self.program_count:
+            return
+        self.current_programs += self.program_range
+        self.rooting_label['text'] = f'{self.current_programs}-{self.program_range+self.current_programs-1}'
+        self.fill_table()
+
+
 
 
 class InputForm():
     def __init__(self):
-        self.root = Tk()
-        self.root.title('Окно ввода')
+        self.window = Tk()
+        self.window.title('Ввод')
 
-        self.K = 0
-        self.stage = 0
-        self.N = 0
+        self.window.geometry("768x359")
+        self.window.configure(bg="#FFFFFF")
 
-        Label(self.root, text='Введите значение:').grid(row=0, column=0)
-        self.input_entry = Entry(self.root)
-        self.input_entry.grid(row=1, column=0)
+        canvas = Canvas(
+            self.window,
+            bg="#FFFFFF",
+            height=359,
+            width=768,
+            bd=0,
+            highlightthickness=0,
+            relief="ridge"
+        )
 
-        Button(self.root, command=self.process, text='Обработать').grid(row=2, column=0)
-        self.info_label = Label(self.root,
-                                text='Введите число K, которое определяет количество доступных фильмов на хостинге (K > 0) = ',
-                                fg='black')
-        self.info_label.grid(row=3, column=0, padx=10, pady=10)
+        canvas.place(x=0, y=0)
+        canvas.create_rectangle(
+            0.0,
+            0.0,
+            768.0,
+            221.0,
+            fill="#D9D9D9",
+            outline="")
 
-        self.root.mainloop()
+        entry_image_1 = PhotoImage(
+            master=self.window,
+            file=self.relative_to_assets("entry_1.png"))
+        entry_bg_1 = canvas.create_image(
+            190.5,
+            113.5,
+            image=entry_image_1
+        )
+        self.entry_K = Entry(
+            bd=0,
+            bg="#FFFFFF",
+            fg="#000716",
+            highlightthickness=0
+        )
+        self.entry_K.place(
+            x=54.0,
+            y=96.0,
+            width=273.0,
+            height=33.0
+        )
 
-    def process(self):
-        if self.stage == 0:
-            K = int(self.input_entry.get())
-            if K <= 0:
-                self.info_label['text'] = 'Пожалуйста, заново введите КОРРЕКТНОЕ число K (K > 0)'
-                self.info_label['foreground'] = 'red'
-            else:
-                self.stage += 1
-                self.info_label['text'] = 'Теперь введите число N, которое определяет кочичество фильмов в программе (N ≤ K) = '
-                self.info_label['foreground'] = 'black'
-                self.K = K
-        elif self.stage == 1:
-            N = int(self.input_entry.get())
-            if N >= self.K:
-                self.info_label['text'] = 'Пожалуйста, заново введите КОРРЕКТНОЕ число N (N ≤ K)'
-                self.info_label['foreground'] = 'red'
-            else:
-                self.N = N
-                hosting = Hosting(self.K, self.N)
-                result = hosting.make_program_set()
-                OutputForm(result, self.root)
+        entry_image_2 = PhotoImage(
+            master=self.window,
+            file=self.relative_to_assets("entry_2.png"))
+        entry_bg_2 = canvas.create_image(
+            596.5,
+            113.5,
+            image=entry_image_2
+        )
+        self.entry_N = Entry(
+            bd=0,
+            bg="#FFFFFF",
+            fg="#000716",
+            highlightthickness=0
+        )
+        self.entry_N.place(
+            x=460.0,
+            y=96.0,
+            width=273.0,
+            height=33.0
+        )
 
+        canvas.create_text(
+            44.0,
+            64.0,
+            anchor="nw",
+            text="Кол-во фильмов на хостинге",
+            fill="#000000",
+            font=("Inter", 20 * -1)
+        )
+
+        canvas.create_text(
+            450.0,
+            64.0,
+            anchor="nw",
+            text="Кол-во фильмов в программе",
+            fill="#000000",
+            font=("Inter", 20 * -1)
+        )
+
+        canvas.create_text(
+            44.0,
+            139.0,
+            anchor="nw",
+            text="Не больше 7!",
+            fill="#000000",
+            font=("Inter", 14 * -1)
+        )
+
+        canvas.create_text(
+            450.0,
+            139.0,
+            anchor="nw",
+            text="Не больше кол-ва на хостинге!",
+            fill="#000000",
+            font=("Inter", 14 * -1)
+        )
+
+        button_enter_image = PhotoImage(
+            master=self.window,
+            file=self.relative_to_assets("button_1.png"))
+        button_enter = Button(
+            image=button_enter_image,
+            borderwidth=0,
+            highlightthickness=0,
+            command=self.click_input_button,
+            relief="flat"
+        )
+        button_enter.place(
+            x=281.0,
+            y=263.0,
+            width=207.0,
+            height=69.0
+        )
+
+        image_image_1 = PhotoImage(
+            master=self.window,
+            file=self.relative_to_assets("image_1.png"))
+        image_1 = canvas.create_image(
+            394.0,
+            114.0,
+            image=image_image_1
+        )
+        self.window.resizable(False, False)
+        self.window.mainloop()
+
+    def relative_to_assets(self, path: str):
+        return ASSETS_PATH + r'/inputForm/' + path
+
+    def click_input_button(self):
+        K = 0
+        N = 0
+        try:
+            K = int(self.entry_K.get().strip())  # кол-во фильмов на хостинге
+            N = int(self.entry_N.get().strip())  # кол-во фильмов в наборе
+        except ValueError:
+            tkinter.messagebox.showerror('Ошибка валидации', 'Введите натуральное число', master=self.window)
+            return
+
+        if K > 7:
+            tkinter.messagebox.showerror('Слишком большое число',
+                                         'Слишком большое кол-во фильмов на хостинге приведет к очень долгим рассчетам. Снизте количество',
+                                         master=self.window)
+            return
+        if N > K:
+            tkinter.messagebox.showerror('Ошибка', 'Фильмов в программе не может быть больше чем на хостинге',
+                                         master=self.window)
+            return
+
+        hosting = Hosting(K, N)
+        result = hosting.make_program_set()
+
+        OutputForm(result, self.window)
 
 
 if __name__ == "__main__":
