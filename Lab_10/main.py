@@ -203,7 +203,7 @@ class GameWindow:
             self.combobox_difficulty['state'] = 'disabled'
 
     def play_button_click(self):
-        pass
+        print('Play Button Clicked!')
 
 
 class GameHandler:
