@@ -9,6 +9,50 @@ def relative_to_assets(path: str, filetype=r'/images/'):
     return ASSETS_PATH + filetype + path
 
 
+class Board(Frame):
+    def __init__(self, master, movement_method=None, *args, **kwargs):
+        super().__init__(master=master, *args, **kwargs)
+        self.movement_method = movement_method
+
+        self.x_max = 3  # width
+        self.y_max = 3  # height
+
+        button_size_width = (self["width"] - 20) // self.x_max
+        button_size_height = (self['height'] - 20) // self.y_max
+
+        headers_size = 20
+        vertical_headers_frame = Frame(self, bg='red', width=headers_size, height=self['height'] - headers_size)
+        vertical_headers_frame.grid(row=0, column=0)
+        horizontal_headers_frame = Frame(self, bg='green', height=headers_size, width=self["width"] - headers_size)
+        horizontal_headers_frame.grid(row=1, column=1)
+
+        self.button_list = []
+        buttons_canvas = Canvas(self, height=self['height'] - headers_size - 4, width=self["width"] - headers_size - 5)
+        buttons_canvas.grid(row=0, column=1)
+        for x in range(1, self.x_max + 1):
+            start_height = 0 + (button_size_height * (x - 1))
+            for y in range(1, self.y_max + 1):
+                start_width = 0 + (button_size_width * (y - 1))
+                button = Button(buttons_canvas, text=f'{x}{y}', command=lambda _x=x, _y=y: self.press(_x, _y))
+                button.place(
+                    x=start_width,
+                    y=start_height,
+                    width=button_size_width,
+                    height=button_size_height
+                )
+                self.button_list.append((x, y, button))
+
+    def press(self, x, y):
+        if self.movement_method is not None:
+            self.movement_method(x, y)
+
+    def place(self, x, y, value):
+        for button_cortage in self.button_list:
+            if (button_cortage[0] == x) and (button_cortage[1] == y):
+                button = button_cortage[2]
+                button['text'] = value
+
+
 class GameWindow:
     def __init__(self):
         self.window = Tk()
@@ -106,7 +150,6 @@ class GameWindow:
 
         self.combobox_difficulty.current(1)
 
-
         canvas.create_rectangle(
             18.0,
             293,
@@ -136,9 +179,11 @@ class GameWindow:
         self.board_frame.place(
             x=345,
             y=28,
-            width=845 - 345,
-            height=528 - 28
+            width=500,
+            height=500
         )
+
+        Board(self.board_frame, self.board_click, width=500, height=500).pack()
 
         canvas.create_text(
             1049.0,
@@ -205,16 +250,28 @@ class GameWindow:
     def play_button_click(self):
         print('Play Button Clicked!')
 
+    def board_click(self, x, y):
+        print(f'button x:{x} y:{y} clicked')
+
 
 class GameHandler:
     def __init__(self, window: GameWindow):
-        pass
+        self.window = window
+        self.game_engine = None
+        self.mode = None
 
-    def new_game(self, mode='ai', difficulty='easy'):
+    def new_game(self, mode='ai', difficulty='easy', is_analysis=True):
         pass
 
     def place(self, x: int, y: int):
         pass
+
+    def game_engine_instance(self):
+        if self.game_engine is not None:
+            return self.game_engine
+        else:
+            self.game_engine = GameEngine()
+            return self.game_engine
 
 
 class GameEngine:
