@@ -9,22 +9,62 @@ def relative_to_assets(path: str, filetype=r'/images/'):
     return ASSETS_PATH + filetype + path
 
 
+BOARD_VERTICAL_HEADERS = {
+    1: "A",
+    2: "B",
+    3: "C",
+    4: "D",
+    5: "E",
+    6: "F",
+    7: "G",
+    8: "H"
+}
+
+
 class Board(Frame):
-    def __init__(self, master, movement_method=None, *args, **kwargs):
-        super().__init__(master=master, *args, **kwargs)
+    def __init__(self, master, width, height, movement_method, x_max=3, y_max=3, *args, **kwargs):
+        super().__init__(master=master, width=width, height=height, *args, **kwargs)
         self.movement_method = movement_method
 
-        self.x_max = 3  # width
-        self.y_max = 3  # height
-
-        button_size_width = (self["width"] - 20) // self.x_max
-        button_size_height = (self['height'] - 20) // self.y_max
+        desk_bg_color = '#6C3600'
+        desk_fg_color = "#FFFFFF"
+        self.x_max = x_max  # height & кол-во вертикалей (А-Н)
+        self.y_max = y_max  # width & кол-во горизонталей (1-8)
 
         headers_size = 20
-        vertical_headers_frame = Frame(self, bg='red', width=headers_size, height=self['height'] - headers_size)
-        vertical_headers_frame.grid(row=0, column=0)
-        horizontal_headers_frame = Frame(self, bg='green', height=headers_size, width=self["width"] - headers_size)
-        horizontal_headers_frame.grid(row=1, column=1)
+        button_size_width = (self["width"] - headers_size) // self.y_max
+        button_size_height = (self['height'] - headers_size) // self.x_max
+
+        horizontal_header_element_size = (self['height'] - headers_size) // self.x_max
+        horizontal_headers_frame = Frame(self, bg=desk_bg_color, width=headers_size,
+                                         height=self['height'] - headers_size)
+        horizontal_headers_frame.grid(row=0, column=0)
+        for i in range(1, self.x_max + 1):
+            start_x = 0
+            start_y = (horizontal_header_element_size - 1) * (i - 1)
+            Label(horizontal_headers_frame, text=str(i), bg=desk_bg_color, fg=desk_fg_color).place(
+                x=start_x,
+                y=start_y,
+                width=headers_size,
+                height=horizontal_header_element_size
+            )
+
+        vertical_header_element_size = (self["width"] - headers_size) // self.y_max
+        vertical_headers_frame = Frame(self, bg=desk_bg_color, height=headers_size, width=self["width"] - headers_size)
+        vertical_headers_frame.grid(row=1, column=1)
+        for i in range(1, self.y_max + 1):
+            start_y = 0
+            start_x = (vertical_header_element_size - 1) * (i - 1)
+            Label(vertical_headers_frame, text=f"{BOARD_VERTICAL_HEADERS[i]}", bg=desk_bg_color,
+                  fg=desk_fg_color).place(
+                x=start_x,
+                y=start_y,
+                width=vertical_header_element_size,
+                height=headers_size
+            )
+
+        corner_headers_frame = Frame(self, bg=desk_bg_color, height=headers_size, width=headers_size)
+        corner_headers_frame.grid(row=1, column=0)
 
         self.button_list = []
         buttons_canvas = Canvas(self, height=self['height'] - headers_size - 4, width=self["width"] - headers_size - 5)
@@ -33,7 +73,8 @@ class Board(Frame):
             start_height = 0 + (button_size_height * (x - 1))
             for y in range(1, self.y_max + 1):
                 start_width = 0 + (button_size_width * (y - 1))
-                button = Button(buttons_canvas, text=f'{x}{y}', command=lambda _x=x, _y=y: self.press(_x, _y))
+                button = Button(buttons_canvas, text=f'{BOARD_VERTICAL_HEADERS[y]}{x}',
+                                command=lambda _x=x, _y=y: self.press(_x, BOARD_VERTICAL_HEADERS[_y]))
                 button.place(
                     x=start_width,
                     y=start_height,
@@ -47,9 +88,9 @@ class Board(Frame):
             self.movement_method(x, y)
 
     def place(self, x, y, value):
-        for button_cortage in self.button_list:
-            if (button_cortage[0] == x) and (button_cortage[1] == y):
-                button = button_cortage[2]
+        for button_cortege in self.button_list:
+            if (button_cortege[0] == x) and (button_cortege[1] == y):
+                button = button_cortege[2]
                 button['text'] = value
 
 
@@ -74,30 +115,7 @@ class GameWindow:
         )
 
         canvas.place(x=0, y=0)
-        canvas.create_rectangle(
-            0.0,
-            5.6,
-            277.0,
-            614.0,
-            fill="#EEEEEE",
-            outline="")
-
-        canvas.create_rectangle(
-            912.0,
-            5.6,
-            1260.0,
-            614.0,
-            fill="#EEEEEE",
-            outline="")
-
-        canvas.create_text(
-            51.0,
-            21,
-            anchor="nw",
-            text="Крестики-нолики",
-            fill="#000000",
-            font=("Inter", 20 * -1, 'bold')
-        )
+        self.create_static_markup(canvas)
 
         button_image_1 = PhotoImage(
             file=relative_to_assets("play_button.png"))
@@ -115,15 +133,6 @@ class GameWindow:
             height=55.0
         )
 
-        canvas.create_text(
-            23.0,
-            139,
-            anchor="nw",
-            text="Режим игры:",
-            fill="#000000",
-            font=("Inter", 16 * -1, 'bold')
-        )
-
         self.game_var = IntVar(self.window)
         self.game_var.set(1)
         self.game_var.trace("w", self.game_var_change)
@@ -139,7 +148,7 @@ class GameWindow:
         values = (
             "Легкая  - случайные ходы",
             'Средняя - видит на 1 ход',
-            'Непобедимая - не может проиграть'
+            'Сложная - 3 хода вперед'
         )
 
         self.combobox_difficulty = Combobox(self.window, font=("Inter", 16 * -1), values=values, state='readonly')
@@ -149,23 +158,6 @@ class GameWindow:
         )
 
         self.combobox_difficulty.current(1)
-
-        canvas.create_rectangle(
-            18.0,
-            293,
-            241.0,
-            293,
-            fill="#000000",
-            outline="")
-
-        canvas.create_text(
-            48.0,
-            208,
-            anchor="nw",
-            text="Сложность:",
-            fill="#000000",
-            font=("Inter", 16 * -1)
-        )
 
         radio_player = Radiobutton(self.window, text='Игра вдвоем', font=("Inter", 16 * -1),
                                    variable=self.game_var, value=2)
@@ -183,16 +175,8 @@ class GameWindow:
             height=500
         )
 
-        Board(self.board_frame, self.board_click, width=500, height=500).pack()
-
-        canvas.create_text(
-            1049.0,
-            16,
-            anchor="nw",
-            text="Анализ",
-            fill="#000000",
-            font=("Inter", 20 * -1, 'bold')
-        )
+        self.board = None
+        self.new_board(x_max=3, y_max=3)
 
         self.calc_frame = Frame(canvas, bg='#EEEEEE')
         self.calc_frame.place(
@@ -220,20 +204,50 @@ class GameWindow:
             y=555
         )
 
-        canvas.create_text(
-            592.0,
-            555.0,
-            anchor="nw",
-            text="|",
-            fill="#000000",
-            font=("Inter", 16 * -1, 'bold')
+        values_vert = (
+            "C: 3 линии",
+            'D: 4 линии',
+            'E: 5 линий',
+            'F: 6 линий',
+            'G: 7 линий',
+            'H: 8 линий'
         )
 
-        self.is_show_analisys = BooleanVar(self.window)
-        self.is_show_analisys.set(True)
+        self.combobox_vertical = Combobox(self.window, font=("Inter", 16 * -1), values=values_vert, state='readonly')
+        self.combobox_vertical.place(
+            x=23,
+            y=453,
+            width=252 - 23,
+            height=489 - 453
+        )
+
+        self.combobox_vertical.current(0)
+
+        values_horizontal = (
+            "3 линии",
+            '4 линии',
+            '5 линий',
+            '6 линий',
+            '7 линий',
+            '8 линий'
+        )
+
+        self.combobox_horizontal = Combobox(self.window, font=("Inter", 16 * -1), values=values_horizontal,
+                                            state='readonly')
+        self.combobox_horizontal.place(
+            x=23,
+            y=539,
+            width=252 - 23,
+            height=575 - 539
+        )
+
+        self.combobox_horizontal.current(0)
+
+        self.is_show_analysis = BooleanVar(self.window)
+        self.is_show_analysis.set(True)
 
         Checkbutton(canvas, text='Показывать расчёты', font=("Inter", 16 * -1), bg="#EEEEEE",
-                    variable=self.is_show_analisys, onvalue=1, offvalue=0, ).place(
+                    variable=self.is_show_analysis, onvalue=1, offvalue=0, ).place(
             x=958,
             y=581
         )
@@ -248,10 +262,205 @@ class GameWindow:
             self.combobox_difficulty['state'] = 'disabled'
 
     def play_button_click(self):
-        print('Play Button Clicked!')
+        diff_int = self.combobox_difficulty.current()
+        diff = 'medium'
+        if diff_int == 0:
+            diff = 'easy'
+        elif diff_int == 1:
+            diff = 'medium'
+        elif diff_int == 2:
+            diff = 'hard'
+
+        x_max = self.combobox_horizontal.current() + 3
+        y_max = self.combobox_vertical.current() + 3
+
+        self.new_board(x_max, y_max)
+
+    def new_board(self, x_max, y_max):
+        if self.board is not None:
+            self.board.destroy()
+        self.board = Board(self.board_frame, movement_method=self.board_click,
+                           width=500,
+                           height=500,
+                           x_max=x_max,
+                           y_max=y_max)
+        self.board.pack()
 
     def board_click(self, x, y):
         print(f'button x:{x} y:{y} clicked')
+
+    def create_static_markup(self, canvas):  # для уменьшения размера init
+        canvas.create_rectangle(
+            0.0,
+            5.6,
+            277.0,
+            614.0,
+            fill="#EEEEEE",
+            outline="")
+
+        canvas.create_rectangle(
+            912.0,
+            5.6,
+            1260.0,
+            614.0,
+            fill="#EEEEEE",
+            outline="")
+
+        canvas.create_text(
+            51.0,
+            21,
+            anchor="nw",
+            text="Крестики-нолики",
+            fill="#000000",
+            font=("Inter", 20 * -1, 'bold')
+        )
+
+        canvas.create_text(
+            23.0,
+            139,
+            anchor="nw",
+            text="Режим игры:",
+            fill="#000000",
+            font=("Inter", 16 * -1, 'bold')
+        )
+
+        canvas.create_rectangle(
+            18.0,
+            293,
+            241.0,
+            293,
+            fill="#000000",
+            outline="")
+
+        canvas.create_text(
+            48.0,
+            208,
+            anchor="nw",
+            text="Сложность:",
+            fill="#000000",
+            font=("Inter", 16 * -1)
+        )
+
+        canvas.create_text(
+            1049.0,
+            16,
+            anchor="nw",
+            text="Анализ",
+            fill="#000000",
+            font=("Inter", 20 * -1, 'bold')
+        )
+
+        canvas.create_text(
+            592.0,
+            555.0,
+            anchor="nw",
+            text="|",
+            fill="#000000",
+            font=("Inter", 16 * -1, 'bold')
+        )
+
+        canvas.create_text(
+            23.0,
+            391,
+            anchor="nw",
+            text="Размер доски:",
+            fill="#000000",
+            font=("Inter", 16 * -1, "bold")
+        )
+
+        canvas.create_text(
+            23.0,
+            426,
+            anchor="nw",
+            text="A",
+            fill="#000000",
+            font=("Inter", 16 * -1)
+        )
+
+        canvas.create_text(
+            238.0,
+            426,
+            anchor="nw",
+            text="H",
+            fill="#000000",
+            font=("Inter", 16 * -1)
+        )
+
+        canvas.create_text(
+            94.0,
+            426,
+            anchor="nw",
+            text="Вертикали",
+            fill="#000000",
+            font=("Inter", 16 * -1)
+        )
+
+        canvas.create_text(
+            23.0,
+            512,
+            anchor="nw",
+            text="1",
+            fill="#000000",
+            font=("Inter", 16 * -1)
+        )
+
+        canvas.create_text(
+            238.0,
+            512,
+            anchor="nw",
+            text="8",
+            fill="#000000",
+            font=("Inter", 16 * -1)
+        )
+
+        canvas.create_text(
+            86.0,
+            512,
+            anchor="nw",
+            text="Горизонтали",
+            fill="#000000",
+            font=("Inter", 16 * -1)
+        )
+
+        canvas.create_rectangle(
+            44.0,
+            436,
+            84.0,
+            436,
+            fill="#000000",
+            outline="")
+
+        canvas.create_rectangle(
+            189,
+            436,
+            229,
+            436,
+            fill="#000000",
+            outline="")
+
+        canvas.create_rectangle(
+            18.0,
+            375,
+            241.0,
+            375,
+            fill="#000000",
+            outline="")
+
+        canvas.create_rectangle(
+            44.0,
+            522.0,
+            79.0,
+            522.0,
+            fill="#000000",
+            outline="")
+
+        canvas.create_rectangle(
+            192.0,
+            522.0,
+            232.0,
+            522.0,
+            fill="#000000",
+            outline="")
 
 
 class GameHandler:
