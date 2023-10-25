@@ -1,4 +1,5 @@
 import os
+import tkinter.messagebox
 from tkinter import *
 from tkinter.ttk import Combobox
 
@@ -18,6 +19,11 @@ BOARD_VERTICAL_HEADERS = {
     6: "F",
     7: "G",
     8: "H"
+}
+
+BOARD_PLAYER_TYPE = {
+    True : 'X',
+    False: 'O'
 }
 
 
@@ -73,8 +79,8 @@ class Board(Frame):
             start_height = 0 + (button_size_height * (x - 1))
             for y in range(1, self.y_max + 1):
                 start_width = 0 + (button_size_width * (y - 1))
-                button = Button(buttons_canvas, text=f'{BOARD_VERTICAL_HEADERS[y]}{x}',
-                                command=lambda _x=x, _y=y: self.press(_x, BOARD_VERTICAL_HEADERS[_y]))
+                button = Button(buttons_canvas, font=('Inter',16 * -1),
+                                command=lambda _x=x, _y=y: self.press(_x, _y))
                 button.place(
                     x=start_width,
                     y=start_height,
@@ -103,6 +109,8 @@ class GameWindow:
         self.window.configure(bg="#FFFFFF")
 
         self.window.iconbitmap(relative_to_assets("icon.ico"))
+
+        self.game_handler = None
 
         canvas = Canvas(
             self.window,
@@ -176,7 +184,6 @@ class GameWindow:
         )
 
         self.board = None
-        self.new_board(x_max=3, y_max=3)
 
         self.calc_frame = Frame(canvas, bg='#EEEEEE')
         self.calc_frame.place(
@@ -262,19 +269,12 @@ class GameWindow:
             self.combobox_difficulty['state'] = 'disabled'
 
     def play_button_click(self):
-        diff_int = self.combobox_difficulty.current()
-        diff = 'medium'
-        if diff_int == 0:
-            diff = 'easy'
-        elif diff_int == 1:
-            diff = 'medium'
-        elif diff_int == 2:
-            diff = 'hard'
-
         x_max = self.combobox_horizontal.current() + 3
         y_max = self.combobox_vertical.current() + 3
+        self.new_board(x_max=x_max, y_max=y_max)
 
-        self.new_board(x_max, y_max)
+        self.game_handler = GameHandler(self)
+        self.game_handler.new_game(x_max=x_max, y_max=y_max)
 
     def new_board(self, x_max, y_max):
         if self.board is not None:
@@ -287,7 +287,8 @@ class GameWindow:
         self.board.pack()
 
     def board_click(self, x, y):
-        print(f'button x:{x} y:{y} clicked')
+        if self.game_handler is not None:
+            result = self.game_handler.place(x, y)
 
     def create_static_markup(self, canvas):  # для уменьшения размера init
         canvas.create_rectangle(
@@ -466,26 +467,51 @@ class GameWindow:
 class GameHandler:
     def __init__(self, window: GameWindow):
         self.window = window
-        self.game_engine = None
+        self.game_engine: GameEngine = None
         self.mode = None
+        self.is_x_moving = True
+        self.is_analysis = None
 
-    def new_game(self, mode='ai', difficulty='easy', is_analysis=True):
-        pass
+    def new_game(self, x_max, y_max):
+        mode = '2pl'
+        if self.window.game_var.get() == 1:
+            mode = 'ai'
+            diff_int = self.window.combobox_difficulty.current()
+            diff = 'medium'
+            if diff_int == 0:
+                diff = 'easy'
+            elif diff_int == 1:
+                diff = 'medium'
+            elif diff_int == 2:
+                diff = 'hard'
+
+        elif self.window.game_var.get() == 2:
+            mode = '2pl'
+
+        self.game_engine = GameEngine(x_max, y_max)
+        self.mode = mode
+        self.is_analysis = self.window.is_show_analysis.get()
 
     def place(self, x: int, y: int):
-        pass
-
-    def game_engine_instance(self):
         if self.game_engine is not None:
-            return self.game_engine
-        else:
-            self.game_engine = GameEngine()
-            return self.game_engine
+            r = self.game_engine.place(x, y)
+            if r == -1:
+                return
+            sign = 'X'
+            if not self.is_x_moving:
+                sign = 'O'
+            self.window.board.place(x, y, sign)
+            self.is_x_moving = not self.is_x_moving
+
+            if self.mode == 'ai':
+                self.game_engine.get_move(side = self.is_x_moving)
 
 
 class GameEngine:
-    def __init__(self):
-        pass
+    def __init__(self, x_max, y_max):
+        self.map = [[' ' for i in range(y_max)] for j in range(x_max)]
+        self.is_x_moving = True
+        self.move_count = 1
 
     def estimate(self):
         pass
@@ -493,8 +519,31 @@ class GameEngine:
     def minimax(self):
         pass
 
-    def get_move(self, side='O'):
+    def get_move(self, side):
         pass
+
+    def check_win(self, board, side):
+        for x_line in board:
+            for elem in x_line:
+                pass
+
+
+    def place(self, x, y):
+        try:
+            b = self.make_step(x - 1, y - 1, self.map.copy())
+            self.map = b
+        except NameError:
+            print('Поле уже занято')
+            return -1
+
+    def make_step(self, x: int, y: int, board):
+        curr_value = board[x][y]
+        if curr_value == ' ':
+            board[x][y] = BOARD_PLAYER_TYPE[self.is_x_moving]
+            self.is_x_moving = not self.is_x_moving
+            return board
+        else:
+            raise NameError()
 
 
 if __name__ == "__main__":
