@@ -2,6 +2,7 @@ import os
 import tkinter.messagebox
 from tkinter import *
 from tkinter.ttk import Combobox
+from collections import deque
 
 ASSETS_PATH = os.path.dirname(os.path.realpath(__file__)) + r"\assets"
 
@@ -22,7 +23,7 @@ BOARD_VERTICAL_HEADERS = {
 }
 
 BOARD_PLAYER_TYPE = {
-    True : 'X',
+    True: 'X',
     False: 'O'
 }
 
@@ -79,7 +80,7 @@ class Board(Frame):
             start_height = 0 + (button_size_height * (x - 1))
             for y in range(1, self.y_max + 1):
                 start_width = 0 + (button_size_width * (y - 1))
-                button = Button(buttons_canvas, font=('Inter',16 * -1),
+                button = Button(buttons_canvas, font=('Inter', 16 * -1),
                                 command=lambda _x=x, _y=y: self.press(_x, _y))
                 button.place(
                     x=start_width,
@@ -468,6 +469,7 @@ class GameHandler:
     def __init__(self, window: GameWindow):
         self.window = window
         self.game_engine: GameEngine = None
+        self.is_game_over = False
         self.mode = None
         self.is_x_moving = True
         self.is_analysis = None
@@ -491,20 +493,22 @@ class GameHandler:
         self.game_engine = GameEngine(x_max, y_max)
         self.mode = mode
         self.is_analysis = self.window.is_show_analysis.get()
+        self.is_game_over = False
 
     def place(self, x: int, y: int):
-        if self.game_engine is not None:
+        if (self.game_engine is not None) and (self.is_game_over is False):
             r = self.game_engine.place(x, y)
             if r == -1:
                 return
-            sign = 'X'
-            if not self.is_x_moving:
-                sign = 'O'
+            sign = BOARD_PLAYER_TYPE[self.is_x_moving]
             self.window.board.place(x, y, sign)
+            res = self.game_engine.check_win(self.game_engine.map, self.is_x_moving)
+            if res:
+                tkinter.messagebox.showinfo('Завершение игры', f'Сторона, управляющая {BOARD_PLAYER_TYPE[self.is_x_moving]} победила!')
+                self.is_game_over = True
             self.is_x_moving = not self.is_x_moving
-
             if self.mode == 'ai':
-                self.game_engine.get_move(side = self.is_x_moving)
+                self.game_engine.get_move(side=self.is_x_moving)
 
 
 class GameEngine:
@@ -512,6 +516,8 @@ class GameEngine:
         self.map = [[' ' for i in range(y_max)] for j in range(x_max)]
         self.is_x_moving = True
         self.move_count = 1
+        self.x_max = x_max
+        self.y_max = y_max
 
     def estimate(self):
         pass
@@ -522,11 +528,43 @@ class GameEngine:
     def get_move(self, side):
         pass
 
-    def check_win(self, board, side):
-        for x_line in board:
-            for elem in x_line:
-                pass
+    def check_win(self, board: list, side):
+        default_moves = [(-1, -1), (0, -1), (-1, 0), (1, 0), (1, 1), (0, 1), (1, -1), (-1, 1)]
+        places = []
 
+        y_lines = 0
+        x_lines = len(board)
+        for i in range(x_lines):
+            y_lines = len(board[i])
+            for j in range(y_lines):
+                if BOARD_PLAYER_TYPE[side] == board[i][j]:
+                    places.append((i, j))
+
+        for direction in default_moves:
+            dir_x, dir_y = direction
+            for place in places:
+                place_x, place_y = place
+                fin_x = place_x + dir_x
+                fin_y = place_y + dir_y
+                if ((fin_x >= 0) and (fin_y >= 0)) and ((fin_x < x_lines) and (fin_y < y_lines)):
+                    check_positions = deque()
+                    check_positions.append((fin_x, fin_y, (self.x_max - 1, self.y_max - 1)))
+
+                    while check_positions:
+                        res = check_positions.pop()
+                        test_x = res[0]
+                        test_y = res[1]
+                        win_xs, win_ys = res[2]
+                        if (board[test_x][test_y] == BOARD_PLAYER_TYPE[side]):
+                            win_xs -= abs(dir_x)
+                            win_ys -= abs(dir_y)
+                            fin_x = test_x + dir_x
+                            fin_y = test_y + dir_y
+                            if ((fin_x >= 0) and (fin_y >= 0)) and ((fin_x < x_lines) and (fin_y < y_lines)):
+                                check_positions.append((fin_x, fin_y, (win_xs, win_ys)))
+                                print(f'wx: {win_xs} wy: {win_ys}')
+                        if (win_ys < 1) or (win_xs < 1):
+                            return True
 
     def place(self, x, y):
         try:
