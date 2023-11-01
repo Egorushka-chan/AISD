@@ -1,4 +1,5 @@
 import os
+import random
 import tkinter.messagebox
 from tkinter import *
 from tkinter.ttk import Combobox
@@ -476,8 +477,9 @@ class GameHandler:
 
     def new_game(self, x_max, y_max):
         mode = '2pl'
+        diff = None
+        mode = 'ai'
         if self.window.game_var.get() == 1:
-            mode = 'ai'
             diff_int = self.window.combobox_difficulty.current()
             diff = 'medium'
             if diff_int == 0:
@@ -490,8 +492,10 @@ class GameHandler:
         elif self.window.game_var.get() == 2:
             mode = '2pl'
 
-        self.game_engine = GameEngine(x_max, y_max)
+        self.game_engine = GameEngine(x_max, y_max, mode, self.window.is_show_analysis.get(), diff)
         self.mode = mode
+        if diff is not None:
+            self.game_engine.difficulty = diff
         self.is_analysis = self.window.is_show_analysis.get()
         self.is_game_over = False
 
@@ -502,35 +506,196 @@ class GameHandler:
                 return
             sign = BOARD_PLAYER_TYPE[self.is_x_moving]
             self.window.board.place(x, y, sign)
-            res = self.game_engine.check_win(self.game_engine.map, self.is_x_moving)
-            if res:
-                tkinter.messagebox.showinfo('Завершение игры', f'Сторона, управляющая {BOARD_PLAYER_TYPE[self.is_x_moving]} победила!')
-                self.is_game_over = True
             self.is_x_moving = not self.is_x_moving
             if self.mode == 'ai':
-                self.game_engine.get_move(side=self.is_x_moving)
+                x, y, res = self.game_engine.get_move()
+                self.window.board.place(x + 1, y + 1, BOARD_PLAYER_TYPE[self.is_x_moving])
+                self.is_x_moving = not self.is_x_moving
+            else:
+                res = self.game_engine.check_win()
+                if res != 0:
+                    winner = 'сторона O'
+                    if res == 1:
+                        winner = 'сторона X'
+                    tkinter.messagebox.showinfo('Конец матча!', f'Победитель - {winner}! Хороший раунд')
+                    self.is_game_over = True
 
 
 class GameEngine:
-    def __init__(self, x_max, y_max):
+    def __init__(self, x_max, y_max, mode, analysys, difficulty):
         self.map = [[' ' for i in range(y_max)] for j in range(x_max)]
         self.is_x_moving = True
+        self.difficulty = difficulty
+        self.depth = 3
+        if difficulty == 'medium':
+            self.depth = 1
+
         self.move_count = 1
         self.x_max = x_max
         self.y_max = y_max
 
-    def estimate(self):
-        pass
+        self.is_active_tree = True
+        if (mode == '2pl') and not analysys:
+            self.is_active_tree = False
 
-    def minimax(self):
-        pass
+        self.node_tree: NodeTree = None
 
-    def get_move(self, side):
-        pass
+    def create_node_tree(self, depth, side):
+        super_node = Node(self.map, side)
+        self.node_tree = NodeTree(self, super_node, depth)
 
-    def check_win(self, board: list, side):
+    def get_move(self):
+        x = 1
+        y = 1
+        if self.difficulty == 'easy':
+            empty_cells = []
+            for x in range(self.x_max):
+                for y in range(self.y_max):
+                    if self.map[x][y] == ' ':
+                        empty_cells.append((x, y))
+            if empty_cells:
+                x, y = random.choice(empty_cells)
+                self.map[x][y] = BOARD_PLAYER_TYPE[self.is_x_moving]
+                self.is_x_moving = not self.is_x_moving
+        else:
+            x, y = self.node_tree.get_move()
+            self.map[x][y] = BOARD_PLAYER_TYPE[self.is_x_moving]
+            self.is_x_moving = not self.is_x_moving
+        return x, y, False
+
+    def place(self, x, y):
+        b = self.make_step(x - 1, y - 1, self.map.copy())
+        if b != -1:
+            self.map = b
+            if self.is_active_tree:
+                if self.node_tree is None:
+                    self.create_node_tree(self.depth, self.is_x_moving)
+                else:
+                    self.node_tree.make_move(b)
+        else:
+            print('Поле уже занято')
+            return -1
+
+    def make_step(self, x: int, y: int, board):
+        curr_value = board[x][y]
+        if curr_value == ' ':
+            board[x][y] = BOARD_PLAYER_TYPE[self.is_x_moving]
+            self.is_x_moving = not self.is_x_moving
+            return board
+        else:
+            return -1
+
+    def check_win(self):
+        node = Node(self.map, self.is_x_moving)
+        node_tree = NodeTree(self, node, 0)
+        victory_X = node_tree.check_win(node, True)
+        victory_O = node_tree.check_win(node, False)
+        if victory_X and not victory_O:
+            return 1
+        elif victory_O and not victory_X:
+            return -1
+        else:
+            return 0
+
+
+class NodeTree:
+    def __init__(self, game_engine, super_node, depth):
+        self.super_node: Node = super_node
+        self.game_engine = game_engine
+        self.depth = depth
+        self.create_child_nodes(super_node, depth)
+
+    def create_child_nodes(self, node, depth):
+        nodes_to_parting = deque()
+        nodes_to_parting.append((node, depth))
+
+        while nodes_to_parting:
+            curr_node, depth = nodes_to_parting.popleft()
+            if depth != 0:
+                for x in range(curr_node.x):
+                    for y in range(curr_node.y):
+                        if curr_node.map[x][y] == ' ':
+                            copy_map = curr_node.copy_map()
+                            copy_map[x][y] = BOARD_PLAYER_TYPE[curr_node.step]
+                            new_node = Node(copy_map, not curr_node.step, curr_node)
+                            nodes_to_parting.append((new_node, depth - 1))
+                            curr_node.child_nodes.append(new_node)
+
+    def make_move(self, map):
+        for child_node in self.super_node.child_nodes:
+            if child_node.compare_map(map):
+                self.super_node = child_node
+                self.expand_node(child_node)
+                return
+        else:
+            print('Ошибка: Ход не в области минимакса')
+
+    def calculate_minimax_weight(self, node):
+        if len(node.child_nodes) != 0:
+            score = self.estimate(node)
+            if score != 0:
+                node.weight = score
+                node.end = True
+                return node.weight
+
+            favorite_node: Node = node.child_nodes[0]
+            for child_node in node.child_nodes:
+                self.calculate_minimax_weight(child_node)
+
+            for child_node in node.child_nodes:
+                if node.step:
+                    if favorite_node.weight < child_node.weight:
+                        favorite_node = child_node
+                else:
+                    if favorite_node.weight > child_node.weight:
+                        favorite_node = child_node
+            node.weight = favorite_node.weight
+            return favorite_node.weight
+        else:
+            score = self.estimate(node)
+            node.weight = score
+            return node.weight
+
+    def calculate_average_weight(self, node):
+        if len(node.child_nodes) != 0:
+            score = self.estimate(node)
+            if score != 0:
+                node.weight = score
+                node.end = True
+                return node.weight
+
+            favorite_node: Node = node.child_nodes[0]
+            for child_node in node.child_nodes:
+                score = self.calculate_average_weight(child_node)
+                favorite_node.weight = (score + favorite_node.weight) / 2
+            return favorite_node.weight
+        else:
+            score = self.estimate(node)
+            node.weight = score
+            return node.weight
+
+    def get_move(self):
+        side = self.super_node.weight
+        self.calculate_minimax_weight(self.super_node)
+        favorite_node = self.super_node.child_nodes[0]
+        for child_node in self.super_node.child_nodes:
+            if side:
+                if favorite_node.weight < child_node.weight:
+                    favorite_node = child_node
+            else:
+                if favorite_node.weight > child_node.weight:
+                    favorite_node = child_node
+
+        for x in range(favorite_node.x):
+            for y in range(favorite_node.y):
+                if favorite_node.map[x][y] != self.super_node.map[x][y]:
+                    self.make_move(favorite_node.map)
+                    return x, y
+
+    def check_win(self, node, side):
         default_moves = [(-1, -1), (0, -1), (-1, 0), (1, 0), (1, 1), (0, 1), (1, -1), (-1, 1)]
         places = []
+        board = node.map
 
         y_lines = 0
         x_lines = len(board)
@@ -548,40 +713,85 @@ class GameEngine:
                 fin_y = place_y + dir_y
                 if ((fin_x >= 0) and (fin_y >= 0)) and ((fin_x < x_lines) and (fin_y < y_lines)):
                     check_positions = deque()
-                    check_positions.append((fin_x, fin_y, (self.x_max - 1, self.y_max - 1)))
+                    check_positions.append((fin_x, fin_y, (node.x - 1, node.y - 1)))
 
                     while check_positions:
                         res = check_positions.pop()
                         test_x = res[0]
                         test_y = res[1]
                         win_xs, win_ys = res[2]
-                        if (board[test_x][test_y] == BOARD_PLAYER_TYPE[side]):
+                        if board[test_x][test_y] == BOARD_PLAYER_TYPE[side]:
                             win_xs -= abs(dir_x)
                             win_ys -= abs(dir_y)
                             fin_x = test_x + dir_x
                             fin_y = test_y + dir_y
                             if ((fin_x >= 0) and (fin_y >= 0)) and ((fin_x < x_lines) and (fin_y < y_lines)):
                                 check_positions.append((fin_x, fin_y, (win_xs, win_ys)))
-                                print(f'wx: {win_xs} wy: {win_ys}')
                         if (win_ys < 1) or (win_xs < 1):
                             return True
 
-    def place(self, x, y):
-        try:
-            b = self.make_step(x - 1, y - 1, self.map.copy())
-            self.map = b
-        except NameError:
-            print('Поле уже занято')
-            return -1
+    def estimate(self, node):
+        board = node.map
+        full = True
+        for x_lines in board:
+            if " " in x_lines:
+                full = False
 
-    def make_step(self, x: int, y: int, board):
-        curr_value = board[x][y]
-        if curr_value == ' ':
-            board[x][y] = BOARD_PLAYER_TYPE[self.is_x_moving]
-            self.is_x_moving = not self.is_x_moving
-            return board
+        if self.check_win(node, True):
+            return 1
+        elif self.check_win(node, False):
+            return -1
+        elif full:
+            return 0
         else:
-            raise NameError()
+            return 0
+
+    def expand_node(self, child_node):
+        passing_throw_nodes = deque()
+        operating_nodes = []
+        for child in child_node.child_nodes:
+            passing_throw_nodes.append((child, self.depth - 2))
+            while passing_throw_nodes:
+                ps_node, depth = passing_throw_nodes.popleft()
+                if depth != 0:
+                    for child in ps_node.child_nodes:
+                        passing_throw_nodes.append((child, depth - 1))
+                else:
+                    operating_nodes.append(ps_node)
+
+        for op_node in operating_nodes:
+            self.create_child_nodes(op_node, 1)
+            pass
+
+
+class Node:
+    def __init__(self, map, step, parent=None, end = False):
+        self.parent_node = parent
+        self.child_nodes = []
+        self.map = map
+        self.x = len(map)
+        self.y = len(map[0])
+        self.weight = 0
+        self.step = step
+        self.end = end
+
+    def copy_map(self):
+        x_len = len(self.map)
+        y_len = len(self.map[0])
+        return_map = [[' ' for i in range(x_len)] for j in range(y_len)]
+        for x in range(x_len):
+            for y in range(y_len):
+                return_map[x][y] = self.map[x][y]
+        return return_map
+
+    def compare_map(self, map):
+        is_equal = True
+        for x in range(self.x):
+            for y in range(self.y):
+                if map[x][y] != self.map[x][y]:
+                    is_equal = False
+                    return is_equal
+        return is_equal
 
 
 if __name__ == "__main__":
