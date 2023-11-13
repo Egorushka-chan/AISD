@@ -107,7 +107,9 @@ class GameWindow:
         self.window = Tk()
         self.window.title('Крестики-нолики')
 
-        self.window.geometry("1260x614")
+        # TODO: вывод рассчётов
+        # self.window.geometry("1260x614")
+        self.window.geometry("910x614")
         self.window.configure(bg="#FFFFFF")
 
         self.window.iconbitmap(relative_to_assets("icon.ico"))
@@ -208,7 +210,7 @@ class GameWindow:
             y=555
         )
 
-        self.y_label = Label(canvas, text="O", font=("Inter", 16 * -1, 'bold'), bg="#FFFFFF")
+        self.y_label = Label(canvas, text="O", font=("Inter", 14 * -1), bg="#FFFFFF")
         self.y_label.place(
             x=691,
             y=555
@@ -254,13 +256,14 @@ class GameWindow:
         self.combobox_horizontal.current(0)
 
         self.is_show_analysis = BooleanVar(self.window)
-        self.is_show_analysis.set(True)
+        self.is_show_analysis.set(False)
 
         Checkbutton(canvas, text='Показывать расчёты', font=("Inter", 16 * -1), bg="#EEEEEE",
                     variable=self.is_show_analysis, onvalue=1, offvalue=0, ).place(
             x=958,
             y=581
         )
+
         self.window.resizable(False, False)
         self.window.mainloop()
 
@@ -284,6 +287,19 @@ class GameWindow:
 
         self.game_handler = GameHandler(self)
         self.game_handler.new_game(x_max=x_max, y_max=y_max)
+
+    def change_current_step(self, number):
+        self.move_label['text'] = f'Ход {number}'
+
+    def change_current_side(self, side):
+        font_not = ("Inter", 14 * -1)
+        font_now = ("Inter", 16 * -1, 'bold')
+        if side:
+            self.x_label.config(font = font_now)
+            self.y_label.config(font = font_not)
+        else:
+            self.x_label.config(font=font_not)
+            self.y_label.config(font=font_now)
 
     def new_board(self, x_max, y_max):
         if self.board is not None:
@@ -473,11 +489,10 @@ class GameWindow:
             outline="")
 
 
-
-
 class GameHandler:
     def __init__(self, window: GameWindow):
         self.window = window
+        self.step = 1
         self.game_engine: GameEngine = None
         self.is_game_over = False
         self.mode = None
@@ -507,6 +522,8 @@ class GameHandler:
             self.game_engine.difficulty = diff
         self.is_analysis = self.window.is_show_analysis.get()
         self.is_game_over = False
+        self.window.change_current_step(1)
+        self.window.change_current_side(True)
 
     def place(self, x: int, y: int):
         if (self.game_engine is not None) and (self.is_game_over is False):
@@ -522,16 +539,32 @@ class GameHandler:
                     winner = 'сторона X'
                 tkinter.messagebox.showinfo('Конец матча!', f'Победитель - {winner}! Хороший раунд')
                 self.is_game_over = True
+            elif r == 'f':
+                tkinter.messagebox.showinfo('Конец матча!', 'Ничья! Хороший раунд')
+                self.is_game_over = True
             elif self.mode == 'ai':
                 x, y, res = self.game_engine.get_move()
                 self.window.board.place(x + 1, y + 1, BOARD_PLAYER_TYPE[self.is_x_moving])
                 self.is_x_moving = not self.is_x_moving
                 if res != 0:
-                    winner = 'сторона O'
-                    if r == 1:
-                        winner = 'сторона X'
-                    tkinter.messagebox.showinfo('Конец матча!', f'Победитель - {winner}! Хороший раунд')
-                    self.is_game_over = True
+                    if res == 'f':
+                        tkinter.messagebox.showinfo('Конец матча!', 'Ничья! Хороший раунд')
+                        self.is_game_over = True
+                    else:
+                        winner = 'сторона O'
+                        if res == 1:
+                            winner = 'сторона X'
+                        tkinter.messagebox.showinfo('Конец матча!', f'Победитель - {winner}! Хороший раунд')
+                        self.is_game_over = True
+                else:
+                    if self.is_x_moving:
+                        self.step = self.step + 1
+                    self.window.change_current_step(self.step)
+            else:
+                if self.is_x_moving:
+                    self.step = self.step + 1
+                self.window.change_current_step(self.step)
+                self.window.change_current_side(self.is_x_moving)
 
 
 class GameEngine:
@@ -593,6 +626,8 @@ class GameEngine:
                 return 'X'
             elif win == -1:
                 return 'O'
+            elif win == 'f':
+                return 'f'
         else:
             print('Поле уже занято')
             return -1
@@ -611,10 +646,19 @@ class GameEngine:
         node_tree = NodeTree(self, node, 0)
         victory_X = node_tree.check_win(node, True)
         victory_O = node_tree.check_win(node, False)
+
+        board = node.map
+        full = True
+        for x_lines in board:
+            if " " in x_lines:
+                full = False
+
         if victory_X and not victory_O:
             return 1
         elif victory_O and not victory_X:
             return -1
+        elif full:
+            return 'f'
         else:
             return 0
 
