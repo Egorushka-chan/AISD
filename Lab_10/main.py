@@ -112,7 +112,7 @@ class GameWindow:
         self.window.geometry("910x614")
         self.window.configure(bg="#FFFFFF")
 
-        self.window.iconbitmap(relative_to_assets("icon.ico"))
+        # self.window.iconbitmap(relative_to_assets("icon.ico"))
 
         self.game_handler = None
 
@@ -129,11 +129,13 @@ class GameWindow:
         canvas.place(x=0, y=0)
         self.create_static_markup(canvas)
 
-        button_image_1 = PhotoImage(
-            file=relative_to_assets("play_button.png"))
+        # button_image_1 = PhotoImage(
+        #     file=relative_to_assets("play_button.png"))
         play_button = Button(
-            image=button_image_1,
-            borderwidth=0,
+            # image=button_image_1,
+            text='Играть',
+            background='grey',
+            borderwidth=1,
             highlightthickness=0,
             command=self.play_button_click,
             relief="flat"
