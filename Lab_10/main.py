@@ -157,8 +157,8 @@ class GameWindow:
 
         values = (
             "Легкая  - случайные ходы",
-            'Средняя - видит на 1 ход',
-            'Сложная - 3 хода вперед'
+            'Стандартная - 3 хода вперед',
+            'Тяжелая - 10 шагов (только 3x3)'
         )
 
         self.combobox_difficulty = Combobox(self.window, font=("Inter", 16 * -1), values=values, state='readonly')
@@ -167,6 +167,7 @@ class GameWindow:
             y=240,
         )
 
+        self.combobox_difficulty.bind('<<ComboboxSelected>>', self.difficulty_change)
         self.combobox_difficulty.current(1)
 
         radio_player = Radiobutton(self.window, text='Игра вдвоем', font=("Inter", 16 * -1),
@@ -269,6 +270,12 @@ class GameWindow:
             self.combobox_difficulty['state'] = 'readonly'
         elif var == 2:
             self.combobox_difficulty['state'] = 'disabled'
+
+    def difficulty_change(self, x):
+        diff_int = self.combobox_difficulty.current()
+        if diff_int == 2:
+            self.combobox_vertical.current(0)
+            self.combobox_horizontal.current(0)
 
     def play_button_click(self):
         x_max = self.combobox_horizontal.current() + 3
@@ -466,6 +473,8 @@ class GameWindow:
             outline="")
 
 
+
+
 class GameHandler:
     def __init__(self, window: GameWindow):
         self.window = window
@@ -507,15 +516,19 @@ class GameHandler:
             sign = BOARD_PLAYER_TYPE[self.is_x_moving]
             self.window.board.place(x, y, sign)
             self.is_x_moving = not self.is_x_moving
-            if self.mode == 'ai':
+            if (r == 'X') or (r == 'O'):
+                winner = 'сторона O'
+                if r == 'X':
+                    winner = 'сторона X'
+                tkinter.messagebox.showinfo('Конец матча!', f'Победитель - {winner}! Хороший раунд')
+                self.is_game_over = True
+            elif self.mode == 'ai':
                 x, y, res = self.game_engine.get_move()
                 self.window.board.place(x + 1, y + 1, BOARD_PLAYER_TYPE[self.is_x_moving])
                 self.is_x_moving = not self.is_x_moving
-            else:
-                res = self.game_engine.check_win()
                 if res != 0:
                     winner = 'сторона O'
-                    if res == 1:
+                    if r == 1:
                         winner = 'сторона X'
                     tkinter.messagebox.showinfo('Конец матча!', f'Победитель - {winner}! Хороший раунд')
                     self.is_game_over = True
@@ -527,15 +540,15 @@ class GameEngine:
         self.is_x_moving = True
         self.difficulty = difficulty
         self.depth = 3
-        if difficulty == 'medium':
-            self.depth = 1
+        if difficulty == 'hard':
+            self.depth = 10
 
         self.move_count = 1
         self.x_max = x_max
         self.y_max = y_max
 
         self.is_active_tree = True
-        if (mode == '2pl') and not analysys:
+        if ((mode == '2pl') or (difficulty == 'easy')) and not analysys:
             self.is_active_tree = False
 
         self.node_tree: NodeTree = None
@@ -557,11 +570,14 @@ class GameEngine:
                 x, y = random.choice(empty_cells)
                 self.map[x][y] = BOARD_PLAYER_TYPE[self.is_x_moving]
                 self.is_x_moving = not self.is_x_moving
+                if self.is_active_tree:
+                    self.node_tree.make_move(self.map)
         else:
             x, y = self.node_tree.get_move()
             self.map[x][y] = BOARD_PLAYER_TYPE[self.is_x_moving]
             self.is_x_moving = not self.is_x_moving
-        return x, y, False
+        check = self.check_win()
+        return x, y, check
 
     def place(self, x, y):
         b = self.make_step(x - 1, y - 1, self.map.copy())
@@ -572,6 +588,11 @@ class GameEngine:
                     self.create_node_tree(self.depth, self.is_x_moving)
                 else:
                     self.node_tree.make_move(b)
+            win = self.check_win()
+            if win == 1:
+                return 'X'
+            elif win == -1:
+                return 'O'
         else:
             print('Поле уже занято')
             return -1
@@ -668,6 +689,7 @@ class NodeTree:
             for child_node in node.child_nodes:
                 score = self.calculate_average_weight(child_node)
                 favorite_node.weight = (score + favorite_node.weight) / 2
+            node.weight = favorite_node.weight
             return favorite_node.weight
         else:
             score = self.estimate(node)
@@ -675,7 +697,7 @@ class NodeTree:
             return node.weight
 
     def get_move(self):
-        side = self.super_node.weight
+        side = self.super_node.step
         self.calculate_minimax_weight(self.super_node)
         favorite_node = self.super_node.child_nodes[0]
         for child_node in self.super_node.child_nodes:
@@ -685,6 +707,9 @@ class NodeTree:
             else:
                 if favorite_node.weight > child_node.weight:
                     favorite_node = child_node
+
+        # if favorite_node.weight == 0:
+        #     favorite_node = random.choice(self.super_node.child_nodes)
 
         for x in range(favorite_node.x):
             for y in range(favorite_node.y):
@@ -765,7 +790,7 @@ class NodeTree:
 
 
 class Node:
-    def __init__(self, map, step, parent=None, end = False):
+    def __init__(self, map, step, parent=None, end=False):
         self.parent_node = parent
         self.child_nodes = []
         self.map = map
