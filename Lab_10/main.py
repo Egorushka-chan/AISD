@@ -112,7 +112,10 @@ class GameWindow:
         self.window.geometry("910x614")
         self.window.configure(bg="#FFFFFF")
 
-        # self.window.iconbitmap(relative_to_assets("icon.ico"))
+        try:
+            self.window.iconbitmap(relative_to_assets("icon.ico"))
+        except:
+            pass
 
         self.game_handler = None
 
@@ -128,18 +131,26 @@ class GameWindow:
 
         canvas.place(x=0, y=0)
         self.create_static_markup(canvas)
-
-        # button_image_1 = PhotoImage(
-        #     file=relative_to_assets("play_button.png"))
         play_button = Button(
-            # image=button_image_1,
-            text='Играть',
+            text='ИГРАТЬ',
             background='grey',
-            borderwidth=1,
+            borderwidth=0,
             highlightthickness=0,
             command=self.play_button_click,
             relief="flat"
         )
+        try:
+            button_image_1 = PhotoImage(
+                file=relative_to_assets("play_button.png"))
+            play_button = Button(
+                image=button_image_1,
+                borderwidth=0,
+                highlightthickness=0,
+                command=self.play_button_click,
+                relief="flat"
+            )
+        except:
+            pass
         play_button.place(
             x=34.0,
             y=64,
@@ -297,8 +308,8 @@ class GameWindow:
         font_not = ("Inter", 14 * -1)
         font_now = ("Inter", 16 * -1, 'bold')
         if side:
-            self.x_label.config(font = font_now)
-            self.y_label.config(font = font_not)
+            self.x_label.config(font=font_now)
+            self.y_label.config(font=font_not)
         else:
             self.x_label.config(font=font_not)
             self.y_label.config(font=font_now)
